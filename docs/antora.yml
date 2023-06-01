@@ -32,6 +32,12 @@ asciidoc:
     graalvm-docs-version: 22.3
     min-maven-version: 3.8.2 # replace ${min-maven-version}
     target-maven-version: 3.8.6 # replace ${target-maven-version}
+       
+    camel-cxf-version: 1.5
+    CamelQuarkusName: "Camel Quarkus"
+    CamelQEName: "Camel Extensions for Quarkus"
+    CamelQEVersion: 2.13.x
+    CamelQEVersionRelease: 2.13.3
 
     # Attributes used in xrefs to other Antora components
     cq-camel-components: 3.18.x@components # replace ${camel.docs.components.xref}
@@ -45,13 +51,19 @@ asciidoc:
     doc-show-extra-content: false # Whether additional content hosted in external AsciiDoc files should be loaded via an include:: directive
 
     # External URLs
-    link-camel-quarkus-source: https://github.com/apache/camel-quarkus/tree/2.13.x
-    link-quarkus-code-generator: code.quarkus.io
-    link-quarkus-cxf-doc: https://quarkiverse.github.io/quarkiverse-docs/quarkus-cxf/1.5
-    link-quarkus-cxf-source: https://github.com/quarkiverse/quarkus-cxf/tree/1.5
+    link-quarkus-code-generator: code.quarkus.redhat.com
+    
+    link-quarkus-cxf-doc-dev: https://quarkiverse.github.io/quarkiverse-docs/quarkus-cxf/dev
+    link-quarkus-cxf-doc: https://quarkiverse.github.io/quarkiverse-docs/quarkus-cxf/{camel-cxf-version}
+    link-quarkus-cxf-source: https://github.com/quarkiverse/quarkus-cxf/tree/{camel-cxf-version}
+    
+    # Camel source
+    :link-camel-quarkus-source: https://github.com/apache/camel-quarkus/tree/{CamelQEVersion}
     
     # Misc
     javaxOrJakartaPackagePrefix: javax # this can be switched to javax in older branches
 
     # Project name
     project-name: "Camel Quarkus"
+
+
