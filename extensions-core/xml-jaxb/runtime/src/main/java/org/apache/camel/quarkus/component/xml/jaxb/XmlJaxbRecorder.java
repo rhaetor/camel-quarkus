@@ -24,19 +24,16 @@ import org.apache.camel.spi.ModelJAXBContextFactory;
 import org.apache.camel.spi.ModelToXMLDumper;
 import org.apache.camel.xml.jaxb.DefaultModelJAXBContextFactory;
 import org.apache.camel.xml.jaxb.JaxbModelToXMLDumper;
-import org.graalvm.nativeimage.ImageInfo;
 
 @Recorder
 public class XmlJaxbRecorder {
 
     public RuntimeValue<ModelJAXBContextFactory> newContextFactory() {
         DefaultModelJAXBContextFactory factory = new DefaultModelJAXBContextFactory();
-        if (ImageInfo.inImageBuildtimeCode()) {
-            try {
-                factory.newJAXBContext();
-            } catch (JAXBException e) {
-                throw new RuntimeCamelException("Unable to initialize Camel JAXBContext", e);
-            }
+        try {
+            factory.newJAXBContext();
+        } catch (JAXBException e) {
+            throw new RuntimeCamelException("Unable to initialize Camel JAXBContext", e);
         }
         return new RuntimeValue<>(factory);
     }
