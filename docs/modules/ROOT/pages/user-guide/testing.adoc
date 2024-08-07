@@ -1,18 +1,18 @@
-= Testing
-:page-aliases: testing.adoc
+[id="camel-quarkus-cxf-testing-guide"]
+= Testing Camel Quarkus Extensions
 
-Testing offers a good way to ensure camel routes behave as expected over time.
-Before going deeper into the subject, it is strongly advised to read xref:user-guide/first-steps.adoc[First Steps] and https://quarkus.io/guides/getting-started-testing[Quarkus testing].
+Testing offers a good way to ensure Camel routes behave as expected over time. If you haven't already, read the xref:user-guide/first-steps.adoc[First Steps] and https://quarkus.io/guides/getting-started-testing[Quarkus testing] sections.
 
 When it comes to testing a route in the context of Quarkus, the recommended approach is to write local integration tests.
 This has the advantage of covering both JVM and native mode.
 
-xref:#_cameltestsupport_style_of_testing[`CamelTestSupport`] style testing can also be used. Note that it can only work in JVM mode.
+In JVM mode, you can use the xref:#_cameltestsupport_style_of_testing[`CamelTestSupport`] style testing can also be used.
 
-== A test running in JVM mode
+== Running in JVM mode
 
-All tests should be annotated with `@QuarkusTest`. This will bootstrap Quarkus and start Camel routes before the `@Test` logic is executed,
-like in the example below:
+In JVM mode, use the `@QuarkusTest` annotation to bootstrap Quarkus and start Camel routes _before_ the `@Test` logic executes.
+
+For example:
 
 [source,java]
 ----
@@ -23,22 +23,31 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class MyTest {
     @Test
-    void test() {
-        // Use any suitable code that send test data to the route and then assert outcomes
+    public void test() {
+        // Use any suitable code that sends test data to the route and then assert outcomes
+        ...
     }
 }
 ----
 
-An example implementation can be found https://github.com/apache/camel-quarkus/blob/main/integration-tests/bindy/src/test/java/org/apache/camel/quarkus/component/bindy/it/MessageTest.java[here].
+[TIP]
+====
+You can find a sample implementation in the Camel Quarkus source:
+
+* link:https://github.com/apache/camel-quarkus/blob/main/integration-tests/bindy/src/test/java/org/apache/camel/quarkus/component/bindy/it/MessageTest.java[MessageTest.java]
+====
 
 [[native-tests]]
-== A test running in native mode
+== Running in native mode
 
-Providing all extensions your application depends on are supported in native mode,
-you should test that your application works correctly native mode.
-The test logic defined in JVM mode can be reused in native mode, by inheriting from the respective JVM mode class.
-The `@QuarkusIntegrationTest` annotation instructs the Quarkus JUnit extension to compile the application under test to a native image
-and will start it before running the tests.
+[NOTE]
+====
+Always test that your application works in native mode for all supported extensions.
+====
+
+You can reuse the test logic defined for JVM mode by inheriting the logic from the respective JVM mode class.
+
+Add the `@QuarkusIntegrationTest` annotation to tell the Quarkus JUnit extension to compile the application under test to native image and start it before running the tests.
 
 [source,java]
 ----
@@ -46,52 +55,78 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
 class MyIT extends MyTest {
+   ...
 }
 ----
 
-An example implementation of a native can be found https://github.com/apache/camel-quarkus/blob/main/integration-tests/bindy/src/test/java/org/apache/camel/quarkus/component/bindy/it/MessageRecordIT.java[here].
+[TIP]
+====
+You can find a sample implementation in the Camel Quarkus source:
+
+* link:https://github.com/apache/camel-quarkus/blob/main/integration-tests/bindy/src/test/java/org/apache/camel/quarkus/component/bindy/it/MessageRecordIT.java[MessageRecordIT.java]
+====
 
 [[jvm-vs-native-tests]]
-== `@QuarkusTest` Vs `@QuarkusIntegrationTest`
+== Differences between `@QuarkusTest` and `@QuarkusIntegrationTest`
 
-JVM mode tests annotated with `@QuarkusTest` are executed in the same JVM as the application under test.
-This makes it possible to https://quarkus.io/guides/getting-started-testing#injection-into-tests[`@Inject`] CDI beans from the application into the test code.
-You can also define new beans or even override beans from the application using https://quarkus.io/guides/getting-started-testing#cdi-alternative-mechanism[`@jakarta.enterprise.inject.Alternative`] and https://quarkus.io/guides/getting-started-testing#cdi-alternative-mechanism[`@jakarta.annotation.Priority`].
+A native executable does not need a JVM to run, and cannot run in a JVM, because it is native code, not bytecode.
 
-These options do not work in native mode for tests annotated with `@QuarkusIntegrationTest`, as they are executed in a JVM hosted in a process separate from the running native application.
+There is no point in compiling tests to native code so they run using a traditional JVM.
+
+This means that communication between tests and the application must go over the network (HTTP/REST, or any other protocol your application speaks), through watching filesystems (log files for example), or any other interprocess communication.
+
+=== `@QuarkusTest` in JVM mode
+
+In JVM mode, tests annotated with `@QuarkusTest` execute in the same JVM as the application under test.
+
+This means you can use `@Inject` to add beans from the application into the test code.
+
+You can also define new beans or even override the beans from the application using `@javax.enterprise.inject.Alternative` and `@javax.annotation.Priority`.
+
+=== `@QuarkusIntegrationTest` in native mode
+
+In native mode, tests annotated with `@QuarkusIntegrationTest` execute in a JVM hosted in a process separate from the running native application.
 
 An important consequence of this, is that all communication between the tests and the native application,
 must take one or more of the following forms:
 
 * Network calls. Typically, HTTP or any other network protocol your application supports.
-* Watching the filesystem for changes (E.g via Camel `file` endpoints).
+* Watching the filesystem for changes. (For example via Camel `file` endpoints.)
 * Any other kind of interprocess communication.
 
-`QuarkusIntegrationTest` also provides some additional features that are not available through `@QuarkusTest`.
+`QuarkusIntegrationTest` provides additional features that are not available through `@QuarkusTest`:
 
-* In JVM mode it can launch and test the runnable application JAR produced by the Quarkus build.
-* In native mode it can launch and test the native application produced by the Quarkus build.
-* If a container image was created during the build, then a container is started so that tests can be executed against it.
+* In JVM mode, you can launch and test the runnable application JAR produced by the Quarkus build.
+* In native mode, you can launch and test the native application produced by the Quarkus build.
+* If you add a container image to the build, a container starts, and tests execute against it.
 
-For more information about `QuarkusIntegrationTest` see the https://quarkus.io/guides/getting-started-testing#quarkus-integration-test[Quarkus testing guide].
+For more information about `QuarkusIntegrationTest`, see the link:https://quarkus.io/guides/getting-started-testing#quarkus-integration-test[Quarkus testing guide].
 
 == Testing with external services
 
 === Testcontainers
 
-Sometimes your application needs to access an external service such as a message broker, database, etc.
-If a container image is available for the service of interest, https://www.testcontainers.org/[Testcontainers]
-can be used to start and stop these services for testing.
+Sometimes your application needs to access some external resource, such as a messaging broker, a database, or other service.
 
-For the application to work properly, it is often essential to pass the connection configuration data
-(host, port, user, password, etc. of the remote service) to the application before it starts.
+If a container image is available for the service of interest, you can use  https://www.testcontainers.org/[Testcontainers] to start and configure the services during testing.
+
+==== Passing configuration data with `QuarkusTestResourceLifecycleManager`
+
+For the application to work properly, it is often essential to pass the connection configuration data (host, port, user, password of the remote service) to the application before it starts.
+
 In the Quarkus ecosystem, `QuarkusTestResourceLifecycleManager` serves this purpose.
 
-You can start one or more containers in the `start()` method
-and return the connection configuration in the form of a `Map`, where the key is the name of a configuration property and the value is the property value.
-The entries of this map are then passed to the application either via command line (`-Dkey=value`) in native mode,
-or through a special MicroProfile configuration provider in JVM mode.
-Note that these settings have a higher precedence than the settings in `application.properties` file.
+You can start one or more Testcontainers in the `start()` method and return the connection configuration from the method in the form of a `Map`.
+
+The entries of this map are then passed to the application in different ways depending on the mode:
+
+* Native mode:  a command line (`-Dkey=value`)
+* JVM Mode: a special MicroProfile configuration provider
+
+[NOTE]
+====
+Command line and MicroProfile settings have a higher precedence than the settings in the `application.properties` file.
+====
 
 [source,java]
 ----
@@ -127,11 +162,12 @@ public class MyTestResource implements QuarkusTestResourceLifecycleManager {
     public void stop() {
         // Stop the needed container(s)
         myContainer.stop();
+        ...
     }
 }
 ----
 
-The defined test resource needs to be referenced from the test classes with `@WithTestResource` as shown below:
+Reference the defined test resource from the test classes with `@QuarkusTestResource`:
 
 [source,java]
 ----
@@ -145,18 +181,29 @@ class MyTest {
 }
 ----
 
-More information can be found in the https://quarkus.io/guides/getting-started-testing#quarkus-test-resource[Quarkus testing guide]. Refer to Camel Quarkus source tree for a https://github.com/apache/camel-quarkus/blob/main/integration-tests/google-storage/src/test/java/org/apache/camel/quarkus/component/google/storage/it/GoogleStorageTestResource.java[complete example].
+[TIP]
+====
+You can find a sample implementation in the Camel Quarkus source:
+
+* https://github.com/apache/camel-quarkus/blob/main/integration-tests/nats/src/test/java/org/apache/camel/quarkus/component/nats/it/NatsTestResource.java[NatsTestResource.java]
+====
 
 === WireMock
 
-It is sometimes useful to stub HTTP interactions with third party services & APIs so that tests do not have to connect to live endpoints, as this can incur costs and the service may not always be 100% available or reliable.
+Instead of having the tests connect to live endpoints, for example, if they are unavailable, unreliable, or expensive, you can stub HTTP interactions with third-party services & APIs.
 
-An excellent tool for mocking & recording HTTP interactions is http://wiremock.org/[WireMock]. It is used extensively throughout the Camel Quarkus test suite for various component extensions. Here follows a typical workflow
-for setting up WireMock.
+You can use link:https://wiremock.org/[WireMock] for mocking & recording HTTP interactions. It is used extensively throughout the Camel Quarkus test suite for various component extensions.
 
-First set up the WireMock server. Note that it is important to configure the Camel component under test to pass any HTTP interactions through the WireMock proxy. This is usually achieved by configuring a component property
-that determines the API endpoint URL. Sometimes things are less straightforward and some extra work is required to configure the API client library, as was the case for https://github.com/apache/camel-quarkus/blob/main/integration-tests/twilio/src/main/java/org/apache/camel/quarkus/component/twilio/it/TwilioResource.java#L83[Twilio].
+==== Setting up WireMock
 
+.Procedure
+. Set up the WireMock server.
++
+[NOTE]
+====
+Always configure the Camel component under test to pass any HTTP interactions through the WireMock proxy. You can achieve this by configuring a component property that determines the API endpoint URL.
+====
++
 [source,java]
 ----
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -183,7 +230,7 @@ public class WireMockTestResource implements QuarkusTestResourceLifecycleManager
         );
         server.start();
 
-        // Stub an HTTP endpoint. Note that WireMock also supports a record and playback mode
+        // Stub an HTTP endpoint. WireMock also supports a record and playback mode
         // https://wiremock.org/docs/record-playback/
         server.stubFor(
             get(urlEqualTo("/api/greeting"))
@@ -205,8 +252,8 @@ public class WireMockTestResource implements QuarkusTestResourceLifecycleManager
     }
 }
 ----
-
-Finally, ensure your test class has the `@WithTestResource` annotation with the appropriate test resource class specified as the value. The WireMock server will be started before all tests are
++
+. Ensure your test class has the `@WithTestResource` annotation with the appropriate test resource class specified as the value. The WireMock server will be started before all tests are
 executed and will be shut down when all tests are finished.
 
 [source,java]
@@ -221,16 +268,29 @@ class MyTest {
 }
 ----
 
-More examples of WireMock usage can be found in the Camel Quarkus integration test source tree such as in the https://github.com/apache/camel-quarkus/blob/main/integration-tests/validator/src/test/java/org/apache/camel/quarkus/component/validator/it/ValidatorTestResource.java[validator tests].
+The WireMock server starts before all tests execute and shuts down when all tests finish.
 
-== `CamelTestSupport` style of testing
+[TIP]
+====
+You can find a sample implementation in the Camel Quarkus integration test source tree:
 
-If you used Camel standalone or on other runtimes before, you may know `CamelTestSupport` already.
-The original `CamelTestSupport` class is not well suited to Quarkus, so there's an extended Quarkus friendly version called `CamelQuarkusTestSupport`.
+* link:https://github.com/apache/camel-quarkus/tree/main/integration-tests/geocoder[Geocoder].
+====
 
-> IMPORTANT: `CamelQuarkusTestSupport` only works in JVM mode. If you need to test in native mode, then use one of the alternate test strategies described above.
+[[cameltestsupport_style_of_testing]]
+== `CamelTestSupport` style of testing with `CamelQuarkusTestSupport`
 
-To use `CamelQuarkusTestSupport`, you must add `camel-quarkus-junit5` as a test scoped dependency to your application.
+Since Camel Quarkus 2.13.0, you can use `CamelQuarkusTestSupport` for testing. It is a replacement for `CamelTestSupport`, which does not work well with Quarkus.
+
+[IMPORTANT]
+====
+`CamelQuarkusTestSupport` only works in JVM mode. If you need to test in native mode, then use one of the alternate test strategies described above.
+====
+
+
+=== Testing with `CamelQuarkusTestSupport` in JVM mode
+
+Add the following dependency into your module (preferably in the `test` scope):
 
 [source,xml]
 ----
@@ -241,13 +301,27 @@ To use `CamelQuarkusTestSupport`, you must add `camel-quarkus-junit5` as a test 
 </dependency>
 ----
 
+You can use `CamelQuarkusTestSupport` in your test like this:
+
+[source,java]
+----
+@QuarkusTest
+@TestProfile(SimpleTest.class) //necessary only if "newly created" context is required for the test (worse performance)
+public class SimpleTest extends CamelQuarkusTestSupport {
+    ...
+}
+----
+
 === Customizing the `CamelContext` for testing
 
 You can customize the `CamelContext` for testing with https://quarkus.io/guides/config-reference#profiles[configuration profiles], CDI beans, observers, https://quarkus.io/guides/getting-started-testing#mock-support[mocks] etc.
 You can also override the `createCamelContext` method and interact directly with the `CamelContext`.
 
-IMPORTANT: When using `createCamelContext` you *MUST NOT*  instantiate and return a new `CamelContext`. Instead, invoke `super.createCamelContext()` and modify the returned `CamelContext` as needed.
+[IMPORTANT]
+====
+When using `createCamelContext` you *MUST NOT*  instantiate and return a new `CamelContext`. Instead, invoke `super.createCamelContext()` and modify the returned `CamelContext` as needed.
 Failing to follow this rule will result in an exception being thrown.
+====
 
 [source,java]
 ----
@@ -341,7 +415,10 @@ class SimpleTest extends CamelQuarkusTestSupport {
 }
 ----
 
-NOTE: You cannot manually restart the `CamelContext` by invoking its `stop()` and `start()` methods. This will result in an exception.
+[NOTE]
+====
+You cannot manually restart the `CamelContext` by invoking its `stop()` and `start()` methods. This will result in an exception.
+====
 
 === Examples
 
@@ -419,7 +496,11 @@ class SimpleTest extends CamelQuarkusTestSupport {
 ==== Explicitly enabling advice
 
 When explicitly xref:manual::advice-with.adoc#_enabling_advice_during_testing[enabling advice] you must invoke `startRouteDefinitions` when completing your `AdviceWith` setup.
-Note that this is only required if you have routes configured that are NOT being advised.
+
+[NOTE]
+====
+Invoking `startRouteDefinitions` is only required if you have routes configured that are *NOT* being advised.
+====
 
 === Limitations
 
@@ -474,7 +555,8 @@ class SimpleTest extends CamelQuarkusTestSupport {
 }
 ----
 +
-+
-
-NOTE: Beans bound to the Camel registry from individual test classes, will persist for the duration of the test suite execution.
+[NOTE]
+====
+Beans bound to the Camel registry from individual test classes, will persist for the duration of the test suite execution.
 This could have unintended consequences, depending on your test expectations. You can use test profiles to restart the `CamelContext` to avoid this.
+====
